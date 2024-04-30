@@ -100,8 +100,7 @@ func (hash *hashCerrado[K, V]) Cantidad() int {
 func (hash *hashCerrado[K, V]) Iterar(visitar func(clave K, valor V) bool) {
 	for _, celda := range hash.tabla {
 		if celda.estado == _OCUPADO {
-			visito := visitar(celda.clave, celda.dato)
-			if !visito {
+			if !visitar(celda.clave, celda.dato) {
 				break
 			}
 		}
@@ -130,15 +129,7 @@ func (iterador *iteradorExterno[K, V]) Siguiente() {
 		panic("El iterador termino de iterar")
 	}
 
-	for iterador.HaySiguiente() {
-		iterador.iterIndice++
-		if iterador.iterIndice < iterador.iterHash.tamaño &&
-			iterador.iterHash.tabla[iterador.iterIndice].estado == _OCUPADO {
-
-			break
-
-		}
-	}
+	iterador.iterIndice = buscarOcupado(iterador.iterHash, iterador.iterIndice+1)
 }
 
 // ///////////////////////////////////
@@ -146,8 +137,9 @@ func (iterador *iteradorExterno[K, V]) Siguiente() {
 // Funciones y metodos auxiliares.
 //
 // ///////////////////////////////////
+
 func crearIteradorExterno[K comparable, V any](hash *hashCerrado[K, V]) *iteradorExterno[K, V] {
-	return &iteradorExterno[K, V]{iterHash: hash, iterIndice: buscarPrimerOcupado(hash)}
+	return &iteradorExterno[K, V]{iterHash: hash, iterIndice: buscarOcupado(hash, 0)}
 }
 
 func crearCeldaHash[K comparable, V any](clave K, valor V) celdaHash[K, V] {
@@ -197,15 +189,14 @@ func buscarIndex[K comparable, V any](hash *hashCerrado[K, V], clave K) int {
 	return indice
 }
 
-// Busco el primer ocupado
-func buscarPrimerOcupado[K comparable, V any](hash *hashCerrado[K, V]) int {
-	indice := 0
-	for i := 0; i < hash.tamaño; i++ {
+// Busco el siguiente ocupado
+func buscarOcupado[K comparable, V any](hash *hashCerrado[K, V], inicio int) int {
+	for i := inicio; i < hash.tamaño; i++ {
 		if hash.tabla[i].estado == _OCUPADO {
 			break
 		}
-		indice++
+		inicio++
 	}
 
-	return indice
+	return inicio
 }
