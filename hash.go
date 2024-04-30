@@ -10,7 +10,7 @@ const (
 	_VACIO = iota
 	_BORRADO
 	_OCUPADO
-	_TAMANIO_INICIAL           = 10
+	_TAMAÑO_INICIAL            = 10
 	_FACTOR_REDIMENSION        = 2
 	_FACTOR_CAPACIDAD          = 4
 	_FACTOR_CARGA              = 0.7
@@ -32,11 +32,12 @@ type hashCerrado[K comparable, V any] struct {
 }
 
 type iteradorExterno[K comparable, V any] struct {
-	tablaHash *hashCerrado[K, V]
+	iterHash   *hashCerrado[K, V]
+	iterIndice int
 }
 
 func CrearHash[K comparable, V any]() *hashCerrado[K, V] {
-	return &hashCerrado[K, V]{tabla: make([]celdaHash[K, V], _TAMANIO_INICIAL), tamaño: _TAMANIO_INICIAL}
+	return &hashCerrado[K, V]{tabla: make([]celdaHash[K, V], _TAMAÑO_INICIAL), tamaño: _TAMAÑO_INICIAL}
 }
 
 func (hash *hashCerrado[K, V]) Pertenece(clave K) bool {
@@ -55,16 +56,16 @@ func (hash *hashCerrado[K, V]) Obtener(clave K) V {
 }
 
 func (hash *hashCerrado[K, V]) Guardar(clave K, valor V) {
-	// Veo si necesita resimension
+	// Veo si necesita redimension.
 	if _FACTOR_CARGA <= float64(hash.borrados+hash.cantidad)/float64(hash.tamaño) {
 		hash.redimension(hash.tamaño * _FACTOR_REDIMENSION)
 	}
 
-	celda := *crearCeldaHash(clave, valor)
+	celda := crearCeldaHash(clave, valor)
 	indice := buscarIndex(hash, clave)
 
-	// Caso clave ya esta
-	if hash.tabla[indice].clave == clave {
+	// Caso clave ya existe.
+	if hash.tabla[indice].estado == _OCUPADO {
 		hash.tabla[indice] = celda
 
 	} else {
@@ -80,7 +81,7 @@ func (hash *hashCerrado[K, V]) Borrar(clave K) V {
 	}
 
 	// Veo si la posible redimencion no me redimensione menos del tamaño inicial y si requiere redimension
-	if hash.cantidad*_FACTOR_CAPACIDAD <= hash.tamaño && hash.tamaño > _TAMANIO_INICIAL {
+	if hash.cantidad*_FACTOR_CAPACIDAD <= hash.tamaño && hash.tamaño > _TAMAÑO_INICIAL {
 		hash.redimension(hash.tamaño / _FACTOR_REDIMENSION)
 	}
 
@@ -96,8 +97,15 @@ func (hash *hashCerrado[K, V]) Cantidad() int {
 	return hash.cantidad
 }
 
-func (hash *hashCerrado[K, V]) Iterar(func(clave K, dato V) bool) {
-	return
+func (hash *hashCerrado[K, V]) Iterar(visitar func(clave K, valor V) bool) {
+	for _, celda := range hash.tabla {
+		if celda.estado == _OCUPADO {
+			visito := visitar(celda.clave, celda.dato)
+			if !visito {
+				break
+			}
+		}
+	}
 }
 
 func (hash *hashCerrado[K, V]) Iterador() IterDiccionario[K, V] {
@@ -105,28 +113,44 @@ func (hash *hashCerrado[K, V]) Iterador() IterDiccionario[K, V] {
 }
 
 func (iterador *iteradorExterno[K, V]) HaySiguiente() bool {
-	return true
+	return iterador.iterHash.tamaño > iterador.iterIndice && iterador.iterHash.cantidad > 0
 }
 
 func (iterador *iteradorExterno[K, V]) VerActual() (K, V) {
-	return iterador.tablaHash.tabla[0].clave, iterador.tablaHash.tabla[0].dato
+	if !iterador.HaySiguiente() {
+		panic("El iterador termino de iterar")
+	}
+	return iterador.iterHash.tabla[iterador.iterIndice].clave, iterador.iterHash.tabla[iterador.iterIndice].dato
 }
 
 func (iterador *iteradorExterno[K, V]) Siguiente() {
-	return
+	if !iterador.HaySiguiente() {
+		panic("El iterador termino de iterar")
+	}
+
+	for iterador.HaySiguiente() {
+		iterador.iterIndice++
+		if iterador.HaySiguiente() && iterador.iterHash.tabla[iterador.iterIndice].estado == _OCUPADO {
+			break
+		}
+	}
 }
 
-// Funciones y metodos auxiliares
+// ///////////////////////////////////
+//
+// Funciones y metodos auxiliares.
+//
+// ///////////////////////////////////
 func crearIteradorExterno[K comparable, V any](hash *hashCerrado[K, V]) *iteradorExterno[K, V] {
-	return &iteradorExterno[K, V]{tablaHash: hash}
+	return &iteradorExterno[K, V]{iterHash: hash, iterIndice: buscarPrimerOcupado(hash)}
 }
 
-func crearCeldaHash[K comparable, V any](clave K, valor V) *celdaHash[K, V] {
-	return &celdaHash[K, V]{clave: clave, dato: valor, estado: _OCUPADO}
+func crearCeldaHash[K comparable, V any](clave K, valor V) celdaHash[K, V] {
+	return celdaHash[K, V]{clave: clave, dato: valor, estado: _OCUPADO}
 }
 
 // Primitiva de redimension, vuelve a hashear toda la tabla si se requiere una
-// redimensionde la misma, ignorando los vacios y los borrados
+// redimensionde la misma, ignorando los vacios y los borrados.
 func (hash *hashCerrado[K, V]) redimension(nuevoTam int) {
 	viejaTabla := hash.tabla
 	hash.tabla = make([]celdaHash[K, V], nuevoTam)
@@ -146,7 +170,7 @@ func convertirABytes[K comparable](clave K) []byte {
 	return []byte(fmt.Sprintf("%v", clave))
 }
 
-func hashing[K comparable](clave K, capacidad int) int {
+func hashing[K comparable](clave K, tamaño int) int {
 	hash := _FNVOffset_Basis
 	bytes := convertirABytes(clave)
 	for _, b := range bytes {
@@ -154,14 +178,28 @@ func hashing[K comparable](clave K, capacidad int) int {
 		hash *= _FNVPrime
 	}
 
-	return int(hash) % capacidad
+	return int(hash) % tamaño
 }
 
-// Busco el indice correspondiente si es necesario para evitar colisiones
+// Busco el indice correspondiente si es necesario para evitar colisiones.
 func buscarIndex[K comparable, V any](hash *hashCerrado[K, V], clave K) int {
 	indice := hashing(clave, hash.tamaño)
 	for hash.tabla[indice].estado != _VACIO && (hash.tabla[indice].estado == _BORRADO || hash.tabla[indice].clave != clave) {
-		indice = (indice + 1) % hash.tamaño // Me aseguro de que el indice siempre este dentro del len de la tabla
+		indice = (indice + 1) % hash.tamaño // Me aseguro de que el indice siempre este dentro del len de la tabla.
+
+	}
+
+	return indice
+}
+
+// Busco el primer ocupado
+func buscarPrimerOcupado[K comparable, V any](hash *hashCerrado[K, V]) int {
+	indice := 0
+	for i := 0; i < hash.tamaño; i++ {
+		if hash.tabla[i].estado == _OCUPADO {
+			break
+		}
+		indice++
 	}
 
 	return indice
