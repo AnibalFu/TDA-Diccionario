@@ -132,8 +132,11 @@ func (iterador *iteradorExterno[K, V]) Siguiente() {
 
 	for iterador.HaySiguiente() {
 		iterador.iterIndice++
-		if iterador.HaySiguiente() && iterador.iterHash.tabla[iterador.iterIndice].estado == _OCUPADO {
+		if iterador.iterIndice < iterador.iterHash.tamaño &&
+			iterador.iterHash.tabla[iterador.iterIndice].estado == _OCUPADO {
+
 			break
+
 		}
 	}
 }
