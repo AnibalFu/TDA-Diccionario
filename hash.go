@@ -10,7 +10,7 @@ const (
 	_VACIO = iota
 	_BORRADO
 	_OCUPADO
-	_TAMANIO_INICIAL           = 11
+	_TAMANIO_INICIAL           = 10
 	_FACTOR_REDIMENSION        = 2
 	_FACTOR_CARGA              = 0.7
 	_FNVOffset_Basis    uint32 = 2166136261
@@ -38,49 +38,10 @@ func CrearHash[K comparable, V any]() *hashCerrado[K, V] {
 	return &hashCerrado[K, V]{tabla: make([]celdaHash[K, V], _TAMANIO_INICIAL), tamaño: _TAMANIO_INICIAL}
 }
 
-func (hash *hashCerrado[K, V]) Guardar(clave K, valor V) {
-	if _FACTOR_CARGA <= float64((hash.borrados+hash.cantidad)/hash.tamaño) {
-		hash.redimension()
-	}
-
-	celda := *crearCeldaHash(clave, valor)
-	indice := hashing(clave, hash.tamaño)
-
-	for true {
-		if hash.tabla[indice].estado == _VACIO {
-			hash.tabla[indice] = celda
-			hash.cantidad++
-			break
-
-		} else if hash.tabla[indice].estado == _OCUPADO && hash.tabla[indice].clave == clave {
-			hash.tabla[indice].dato = valor
-			break
-		}
-
-		indice++
-		if indice == len(hash.tabla)-1 {
-			indice = 0
-		}
-
-	}
-
-}
-
 func (hash *hashCerrado[K, V]) Pertenece(clave K) bool {
-	indice := hashing(clave, hash.tamaño)
-	for _VACIO != hash.tabla[indice].estado {
-		if clave == hash.tabla[indice].clave && _BORRADO != hash.tabla[indice].estado {
-			return true
-		}
+	indice := buscarIndex(hash, clave)
+	return hash.tabla[indice].estado == _OCUPADO
 
-		indice++
-		if indice == len(hash.tabla)-1 {
-			indice = 0
-		}
-
-	}
-
-	return false
 }
 
 func (hash *hashCerrado[K, V]) Obtener(clave K) V {
@@ -88,30 +49,39 @@ func (hash *hashCerrado[K, V]) Obtener(clave K) V {
 		panic("La clave no pertenece al diccionario")
 	}
 
-	indice := hashing(clave, hash.tamaño)
-	for clave != hash.tabla[indice].clave || _BORRADO == hash.tabla[indice].estado {
-		indice++
-		if indice == len(hash.tabla)-1 {
-			indice = 0
-		}
+	indice := buscarIndex(hash, clave)
+	return hash.tabla[indice].dato
+}
+
+func (hash *hashCerrado[K, V]) Guardar(clave K, valor V) {
+	if _FACTOR_CARGA <= float64(hash.borrados+hash.cantidad)/float64(hash.tamaño) {
+		hash.redimension(hash.tamaño * _FACTOR_REDIMENSION)
 	}
 
-	return hash.tabla[indice].dato
+	celda := *crearCeldaHash(clave, valor)
+	indice := buscarIndex(hash, clave)
+
+	// Caso clave ya esta
+	if hash.tabla[indice].clave == clave {
+		hash.tabla[indice] = celda
+
+	} else {
+		hash.tabla[indice] = celda
+		hash.cantidad++
+
+	}
 }
 
 func (hash *hashCerrado[K, V]) Borrar(clave K) V {
 	if !hash.Pertenece(clave) {
 		panic("La clave no pertenece al diccionario")
 	}
-	indice := hashing(clave, hash.tamaño)
 
-	for clave != hash.tabla[indice].clave || hash.tabla[indice].estado == _BORRADO {
-		indice++
-		if indice == len(hash.tabla)-1 {
-			indice = 0
-		}
+	if _FACTOR_CARGA <= float64(hash.borrados+hash.cantidad)/float64(hash.tamaño) {
+		hash.redimension(hash.tamaño / _FACTOR_REDIMENSION)
 	}
 
+	indice := buscarIndex(hash, clave)
 	hash.tabla[indice].estado = _BORRADO
 	hash.borrados++
 	hash.cantidad--
@@ -143,6 +113,7 @@ func (iterador *iteradorExterno[K, V]) Siguiente() {
 	return
 }
 
+// Funciones y metodos auxiliares
 func crearIteradorExterno[K comparable, V any](hash *hashCerrado[K, V]) *iteradorExterno[K, V] {
 	return &iteradorExterno[K, V]{tablaHash: hash}
 }
@@ -151,10 +122,10 @@ func crearCeldaHash[K comparable, V any](clave K, valor V) *celdaHash[K, V] {
 	return &celdaHash[K, V]{clave: clave, dato: valor, estado: _OCUPADO}
 }
 
-func (hash *hashCerrado[K, V]) redimension() {
-	nuevoTam := hash.tamaño * _FACTOR_REDIMENSION
+// Primitiva de redimension, vuelve a hashear toda la tabla si se requiere una
+// redimensionde la misma, ignorando los vacios y los borrados
+func (hash *hashCerrado[K, V]) redimension(nuevoTam int) {
 	viejaTabla := hash.tabla
-
 	hash.tabla = make([]celdaHash[K, V], nuevoTam)
 	hash.tamaño = nuevoTam
 	hash.borrados = 0
@@ -167,7 +138,7 @@ func (hash *hashCerrado[K, V]) redimension() {
 	}
 }
 
-// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+// Funcion de hassing, fuente: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
 func convertirABytes[K comparable](clave K) []byte {
 	return []byte(fmt.Sprintf("%v", clave))
 }
@@ -181,4 +152,14 @@ func hashing[K comparable](clave K, capacidad int) int {
 	}
 
 	return int(hash) % capacidad
+}
+
+// Busco el indice correspondiente si es necesario para evitar colisiones
+func buscarIndex[K comparable, V any](hash *hashCerrado[K, V], clave K) int {
+	indice := hashing(clave, hash.tamaño)
+	for hash.tabla[indice].estado != _VACIO && (hash.tabla[indice].estado == _BORRADO || hash.tabla[indice].clave != clave) {
+		indice = (indice + 1) % hash.tamaño // Me aseguro de que el indice siempre este dentro del len de la tabla
+	}
+
+	return indice
 }
