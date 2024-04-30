@@ -10,7 +10,7 @@ const (
 	_VACIO = iota
 	_BORRADO
 	_OCUPADO
-	_TAMAÑO_INICIAL            = 10
+	_TAMAÑO_INICIAL            = 13
 	_FACTOR_REDIMENSION        = 2
 	_FACTOR_CAPACIDAD          = 4
 	_FACTOR_CARGA              = 0.7
@@ -113,14 +113,16 @@ func (hash *hashCerrado[K, V]) Iterador() IterDiccionario[K, V] {
 }
 
 func (iterador *iteradorExterno[K, V]) HaySiguiente() bool {
-	return iterador.iterHash.tamaño > iterador.iterIndice && iterador.iterHash.cantidad > 0
+	return iterador.iterIndice < iterador.iterHash.tamaño && iterador.iterHash.cantidad > 0
 }
 
 func (iterador *iteradorExterno[K, V]) VerActual() (K, V) {
 	if !iterador.HaySiguiente() {
 		panic("El iterador termino de iterar")
 	}
-	return iterador.iterHash.tabla[iterador.iterIndice].clave, iterador.iterHash.tabla[iterador.iterIndice].dato
+
+	celda := iterador.iterHash.tabla[iterador.iterIndice]
+	return celda.clave, celda.dato
 }
 
 func (iterador *iteradorExterno[K, V]) Siguiente() {
