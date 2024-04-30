@@ -89,6 +89,7 @@ func (hash *hashCerrado[K, V]) Borrar(clave K) V {
 	hash.tabla[indice].estado = _BORRADO
 	hash.borrados++
 	hash.cantidad--
+
 	return hash.tabla[indice].dato
 
 }
@@ -108,7 +109,7 @@ func (hash *hashCerrado[K, V]) Iterar(visitar func(clave K, valor V) bool) {
 }
 
 func (hash *hashCerrado[K, V]) Iterador() IterDiccionario[K, V] {
-	return crearIteradorExterno[K, V](hash)
+	return crearIteradorExterno(hash)
 }
 
 func (iterador *iteradorExterno[K, V]) HaySiguiente() bool {
