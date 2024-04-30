@@ -12,6 +12,7 @@ const (
 	_OCUPADO
 	_TAMANIO_INICIAL           = 10
 	_FACTOR_REDIMENSION        = 2
+	_FACTOR_CAPACIDAD          = 4
 	_FACTOR_CARGA              = 0.7
 	_FNVOffset_Basis    uint32 = 2166136261
 	_FNVPrime           uint32 = 16777619
@@ -54,6 +55,7 @@ func (hash *hashCerrado[K, V]) Obtener(clave K) V {
 }
 
 func (hash *hashCerrado[K, V]) Guardar(clave K, valor V) {
+	// Veo si necesita resimension
 	if _FACTOR_CARGA <= float64(hash.borrados+hash.cantidad)/float64(hash.tamaño) {
 		hash.redimension(hash.tamaño * _FACTOR_REDIMENSION)
 	}
@@ -77,7 +79,8 @@ func (hash *hashCerrado[K, V]) Borrar(clave K) V {
 		panic("La clave no pertenece al diccionario")
 	}
 
-	if _FACTOR_CARGA <= float64(hash.borrados+hash.cantidad)/float64(hash.tamaño) {
+	// Veo si la posible redimencion no me redimensione menos del tamaño inicial y si requiere redimension
+	if hash.cantidad*_FACTOR_CAPACIDAD <= hash.tamaño && hash.tamaño > _TAMANIO_INICIAL {
 		hash.redimension(hash.tamaño / _FACTOR_REDIMENSION)
 	}
 
