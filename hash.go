@@ -61,18 +61,14 @@ func (hash *hashCerrado[K, V]) Guardar(clave K, valor V) {
 		hash.redimension(hash.tamaño * _FACTOR_REDIMENSION)
 	}
 
-	celda := crearCeldaHash(clave, valor)
 	indice := buscarIndex(hash, clave)
-
 	// Caso clave ya existe.
-	if hash.tabla[indice].estado == _OCUPADO {
-		hash.tabla[indice] = celda
-
-	} else {
-		hash.tabla[indice] = celda
+	if hash.tabla[indice].estado != _OCUPADO {
 		hash.cantidad++
-
 	}
+
+	hash.tabla[indice] = crearCeldaHash(clave, valor)
+
 }
 
 func (hash *hashCerrado[K, V]) Borrar(clave K) V {
