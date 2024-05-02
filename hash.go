@@ -36,8 +36,9 @@ type iteradorExterno[K comparable, V any] struct {
 	iterIndice int
 }
 
-func CrearHash[K comparable, V any]() *hashCerrado[K, V] {
-	return &hashCerrado[K, V]{tabla: make([]celdaHash[K, V], _TAMAÑO_INICIAL), tamaño: _TAMAÑO_INICIAL}
+func CrearHash[K comparable, V any]() Diccionario[K, V] {
+	tablaHash := crearTablaHash[K, V](_TAMAÑO_INICIAL)
+	return &hashCerrado[K, V]{tabla: tablaHash, tamaño: _TAMAÑO_INICIAL}
 }
 
 func (hash *hashCerrado[K, V]) Pertenece(clave K) bool {
@@ -47,11 +48,11 @@ func (hash *hashCerrado[K, V]) Pertenece(clave K) bool {
 }
 
 func (hash *hashCerrado[K, V]) Obtener(clave K) V {
-	if !hash.Pertenece(clave) {
+	indice := buscarIndex(hash, clave)
+	if !(hash.tabla[indice].estado == _OCUPADO) {
 		panic("La clave no pertenece al diccionario")
 	}
 
-	indice := buscarIndex(hash, clave)
 	return hash.tabla[indice].dato
 }
 
@@ -63,7 +64,7 @@ func (hash *hashCerrado[K, V]) Guardar(clave K, valor V) {
 
 	indice := buscarIndex(hash, clave)
 	// Caso clave ya existe.
-	if hash.tabla[indice].estado != _OCUPADO {
+	if hash.tabla[indice].estado == _VACIO {
 		hash.cantidad++
 	}
 
@@ -72,16 +73,16 @@ func (hash *hashCerrado[K, V]) Guardar(clave K, valor V) {
 }
 
 func (hash *hashCerrado[K, V]) Borrar(clave K) V {
-	if !hash.Pertenece(clave) {
-		panic("La clave no pertenece al diccionario")
-	}
-
 	// Veo si la posible redimencion no me redimensione menos del tamaño inicial y si requiere redimension
 	if hash.cantidad*_FACTOR_CAPACIDAD <= hash.tamaño && hash.tamaño > _TAMAÑO_INICIAL {
 		hash.redimension(hash.tamaño / _FACTOR_REDIMENSION)
 	}
 
 	indice := buscarIndex(hash, clave)
+	if !(hash.tabla[indice].estado == _OCUPADO) {
+		panic("La clave no pertenece al diccionario")
+	}
+
 	hash.tabla[indice].estado = _BORRADO
 	hash.borrados++
 	hash.cantidad--
@@ -146,13 +147,17 @@ func crearCeldaHash[K comparable, V any](clave K, valor V) celdaHash[K, V] {
 	return celdaHash[K, V]{clave: clave, dato: valor, estado: _OCUPADO}
 }
 
+func crearTablaHash[K comparable, V any](tamaño int) []celdaHash[K, V] {
+	return make([]celdaHash[K, V], tamaño)
+}
+
 // Primitiva de redimension, vuelve a hashear toda la tabla si se requiere una
 // redimensionde la misma, ignorando los vacios y los borrados.
 func (hash *hashCerrado[K, V]) redimension(nuevoTam int) {
 	viejaTabla := hash.tabla
 
 	//Establecer nuevos valores.
-	hash.tabla = make([]celdaHash[K, V], nuevoTam)
+	hash.tabla = crearTablaHash[K, V](nuevoTam)
 	hash.tamaño = nuevoTam
 	hash.borrados = 0
 	hash.cantidad = 0
