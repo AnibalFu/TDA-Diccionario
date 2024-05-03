@@ -97,10 +97,8 @@ func (hash *hashCerrado[K, V]) Cantidad() int {
 
 func (hash *hashCerrado[K, V]) Iterar(visitar func(clave K, valor V) bool) {
 	for _, celda := range hash.tabla {
-		if celda.estado == _OCUPADO {
-			if !visitar(celda.clave, celda.dato) {
-				break
-			}
+		if celda.estado == _OCUPADO && !visitar(celda.clave, celda.dato) {
+			break
 		}
 	}
 }
