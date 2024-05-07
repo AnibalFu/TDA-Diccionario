@@ -212,16 +212,24 @@ func TestIteradorInterno(t *testing.T) {
 	dic.Guardar(5, 5)
 
 	res := 0
+	dic.Iterar(func(clave int, dato int) bool {
+		if clave <= 5 {
+			res += clave
+		}
+		return true
+
+	})
+	require.EqualValues(t, 14, res)
+
+	res = 0
 	dic.Iterar(func(_ int, dato int) bool {
-		res += dato
 		if res > 10 {
 			return false
-
-		} else {
-			return true
 		}
-	})
+		res += dato
+		return true
 
+	})
 	require.EqualValues(t, 14, res)
 
 	res = 0
@@ -233,7 +241,6 @@ func TestIteradorInterno(t *testing.T) {
 		return true
 
 	})
-
 	require.EqualValues(t, 5, res)
 
 }
