@@ -25,7 +25,7 @@ type iteradorRangoAbb[K comparable, V any] struct {
 	hasta   *K
 }
 
-func CrearABB[K comparable, V any](funcion_cmp func(K, K) int) DiccionarioOrdenado[K, V] {
+func CrearAbb[K comparable, V any](funcion_cmp func(K, K) int) DiccionarioOrdenado[K, V] {
 	return &abb[K, V]{cmp: funcion_cmp}
 }
 
@@ -90,11 +90,11 @@ func (ab *abb[K, V]) Cantidad() int {
 }
 
 func (ab *abb[K, V]) Iterar(visitar func(clave K, valor V) bool) {
-
+	_iterarRango(ab, ab.raiz, nil, nil, visitar)
 }
 
 func (ab *abb[K, V]) IterarRango(desde *K, hasta *K, visitar func(clave K, dato V) bool) {
-
+	_iterarRango(ab, ab.raiz, desde, hasta, visitar)
 }
 
 func (ab *abb[K, V]) Iterador() IterDiccionario[K, V] {
@@ -180,6 +180,7 @@ func (ab *abb[K, V]) RecorrerPorNiveles() []K {
 // La funcion recibe un nodo con 0 hijos o 1 hijo y borra el nodo de forma correcta.
 func _borrar[K comparable, V any](nodo **nodoAbb[K, V]) {
 	hijoIzq, hijoDer := (*nodo).izq, (*nodo).der
+
 	if hijoIzq == nil && hijoDer != nil {
 		*nodo = hijoIzq
 
@@ -201,4 +202,27 @@ func buscarReemplazo[K comparable, V any](nodo **nodoAbb[K, V]) **nodoAbb[K, V] 
 
 	return buscarReemplazo(&(*nodo).der)
 
+}
+
+func _iterarRango[K comparable, V any](abb *abb[K, V], nodo *nodoAbb[K, V], desde *K, hasta *K, visitar func(clave K, dato V) bool) {
+	if nodo == nil {
+		return
+	}
+
+	// Si desde es nil, iterar desde la primera clave.
+	if desde == nil || abb.cmp(nodo.clave, *desde) >= 0 {
+		_iterarRango(abb, nodo.izq, desde, hasta, visitar)
+	}
+
+	// Si estamos en el rango se debe visitar el nodo actual.
+	if (desde == nil || abb.cmp(nodo.clave, *desde) >= 0) && (hasta == nil || abb.cmp(nodo.clave, *hasta) <= 0) {
+		if !visitar(nodo.clave, nodo.dato) {
+			return
+		}
+	}
+
+	// Si hasta es nil, iterar hasta la última clave.
+	if hasta == nil || abb.cmp(nodo.clave, *hasta) <= 0 {
+		_iterarRango(abb, nodo.der, desde, hasta, visitar)
+	}
 }

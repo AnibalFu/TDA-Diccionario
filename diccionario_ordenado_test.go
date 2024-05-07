@@ -29,7 +29,7 @@ func CompararEnteros(a, b int) int {
 
 func TestDiccionarioAbbVacio(t *testing.T) {
 	t.Log("Comprueba que Diccionario vacio no tiene claves")
-	dic := TDAAbb.CrearABB[string, string](CompararStrings)
+	dic := TDAAbb.CrearAbb[string, string](CompararStrings)
 	require.EqualValues(t, 0, dic.Cantidad())
 	require.False(t, dic.Pertenece("A"))
 	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dic.Obtener("A") })
@@ -37,7 +37,7 @@ func TestDiccionarioAbbVacio(t *testing.T) {
 }
 
 func TestBorrarConCeroHijos(t *testing.T) {
-	dic := TDAAbb.CrearABB[int, int](CompararEnteros)
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
 
 	dic.Guardar(5, 5)
 	dic.Guardar(2, 2)
@@ -55,7 +55,7 @@ func TestBorrarConCeroHijos(t *testing.T) {
 }
 
 func TestBorrarConUnHijos(t *testing.T) {
-	dic := TDAAbb.CrearABB[int, int](CompararEnteros)
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
 
 	dic.Guardar(5, 5)
 	dic.Guardar(7, 7)
@@ -73,7 +73,7 @@ func TestBorrarConUnHijos(t *testing.T) {
 }
 
 func TestBorrarConDosHijos(t *testing.T) {
-	dic := TDAAbb.CrearABB[int, int](CompararEnteros)
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
 
 	dic.Guardar(10, 10)
 	dic.Guardar(4, 4)
@@ -97,12 +97,12 @@ func TestBorrarConDosHijos(t *testing.T) {
 func TestDiccionarioAbbClaveDefault(t *testing.T) {
 	t.Log("Prueba sobre un Hash vacío que si justo buscamos la clave que es el default del tipo de dato, " +
 		"sigue sin existir")
-	dic := TDAAbb.CrearABB[string, string](CompararStrings)
+	dic := TDAAbb.CrearAbb[string, string](CompararStrings)
 	require.False(t, dic.Pertenece(""))
 	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dic.Obtener("") })
 	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dic.Borrar("") })
 
-	dicNum := TDAAbb.CrearABB[int, string](CompararEnteros)
+	dicNum := TDAAbb.CrearAbb[int, string](CompararEnteros)
 	require.False(t, dicNum.Pertenece(0))
 	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dicNum.Obtener(0) })
 	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dicNum.Borrar(0) })
@@ -110,7 +110,7 @@ func TestDiccionarioAbbClaveDefault(t *testing.T) {
 
 func TestUnElementAbb(t *testing.T) {
 	t.Log("Comprueba que Diccionario con un elemento tiene esa Clave, unicamente")
-	dic := TDAAbb.CrearABB[string, int](CompararStrings)
+	dic := TDAAbb.CrearAbb[string, int](CompararStrings)
 	dic.Guardar("A", 10)
 	require.EqualValues(t, 1, dic.Cantidad())
 	require.True(t, dic.Pertenece("A"))
@@ -130,7 +130,7 @@ func TestDiccionarioAbbGuardar(t *testing.T) {
 	claves := []string{clave1, clave2, clave3}
 	valores := []string{valor1, valor2, valor3}
 
-	dic := TDAAbb.CrearABB[string, string](CompararStrings)
+	dic := TDAAbb.CrearAbb[string, string](CompararStrings)
 	require.False(t, dic.Pertenece(claves[0]))
 	require.False(t, dic.Pertenece(claves[0]))
 	dic.Guardar(claves[0], valores[0])
@@ -164,7 +164,7 @@ func TestReemplazoDatoAbb(t *testing.T) {
 	t.Log("Guarda un par de claves, y luego vuelve a guardar, buscando que el dato se haya reemplazado")
 	clave := "Gato"
 	clave2 := "Perro"
-	dic := TDAAbb.CrearABB[string, string](CompararStrings)
+	dic := TDAAbb.CrearAbb[string, string](CompararStrings)
 	dic.Guardar(clave, "miau")
 	dic.Guardar(clave2, "guau")
 	require.True(t, dic.Pertenece(clave))
@@ -186,7 +186,7 @@ func TestReemplazoDatoHopscotchAbb(t *testing.T) {
 	t.Log("Guarda bastantes claves, y luego reemplaza sus datos. Luego valida que todos los datos sean " +
 		"correctos. Para una implementación Hopscotch, detecta errores al hacer lugar o guardar elementos.")
 
-	dic := TDAAbb.CrearABB[int, int](CompararEnteros)
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
 	for i := 0; i < 500; i++ {
 		dic.Guardar(i, i)
 	}
@@ -198,4 +198,125 @@ func TestReemplazoDatoHopscotchAbb(t *testing.T) {
 		ok = dic.Obtener(i) == 2*i
 	}
 	require.True(t, ok, "Los elementos no fueron actualizados correctamente")
+}
+
+func TestIteradorInterno(t *testing.T) {
+	t.Log("Valida condicion de corte del iterador interno cuando un elemento no cumple con la funcion visitar")
+
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
+	dic.Guardar(7, 7)
+	dic.Guardar(6, 6)
+	dic.Guardar(2, 2)
+	dic.Guardar(3, 3)
+	dic.Guardar(4, 4)
+	dic.Guardar(5, 5)
+
+	res := 0
+	dic.Iterar(func(_ int, dato int) bool {
+		res += dato
+		if res > 10 {
+			return false
+
+		} else {
+			return true
+		}
+	})
+
+	require.EqualValues(t, 14, res)
+
+	res = 0
+	dic.Iterar(func(clave int, dato int) bool {
+		if clave > 3 {
+			return false
+		}
+		res += dato
+		return true
+
+	})
+
+	require.EqualValues(t, 5, res)
+
+}
+
+func TestIteradorInternoConBorrados(t *testing.T) {
+	t.Log("Valida que los datos sean recorridas correctamente (y una única vez) con el iterador interno, sin recorrer datos borrados")
+	clave0 := "Elefante"
+	clave1 := "Gato"
+	clave2 := "Perro"
+	clave3 := "Vaca"
+	clave4 := "Burrito"
+	clave5 := "Hamster"
+
+	dic := TDAAbb.CrearAbb[string, int](CompararStrings)
+	dic.Guardar(clave0, 7)
+	dic.Guardar(clave1, 6)
+	dic.Guardar(clave2, 2)
+	dic.Guardar(clave3, 3)
+	dic.Guardar(clave4, 4)
+	dic.Guardar(clave5, 5)
+
+	dic.Borrar(clave0)
+
+	factorial := 1
+	ptrFactorial := &factorial
+	dic.Iterar(func(_ string, dato int) bool {
+		*ptrFactorial *= dato
+		return true
+	})
+
+	require.EqualValues(t, 720, factorial)
+}
+
+func TestIterarRangoSuma(t *testing.T) {
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
+
+	dic.Guardar(2, 2)
+	dic.Guardar(10, 10)
+	dic.Guardar(11, 11)
+	dic.Guardar(5, 5)
+	dic.Guardar(6, 6)
+	dic.Guardar(3, 3)
+	dic.Guardar(7, 7)
+
+	var tres int = 3
+	var siete int = 7
+
+	res := 0
+	dic.IterarRango(&tres, &siete, func(clave, dato int) bool {
+		res += dato
+		return true
+	})
+
+	require.EqualValues(t, 21, res)
+}
+
+func TestIterarRangoMixtoSuma(t *testing.T) {
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
+
+	dic.Guardar(2, 2)
+	dic.Guardar(10, 10)
+	dic.Guardar(11, 11)
+	dic.Guardar(5, 5)
+	dic.Guardar(6, 6)
+	dic.Guardar(3, 3)
+	dic.Guardar(7, 7)
+
+	var tres int = 3
+	var siete int = 7
+
+	res := 0
+	dic.IterarRango(nil, &siete, func(clave, dato int) bool {
+		res += dato
+		return true
+	})
+
+	require.EqualValues(t, 23, res)
+
+	res = 0
+	dic.IterarRango(&tres, nil, func(clave, dato int) bool {
+		res += dato
+		return true
+	})
+
+	require.EqualValues(t, 42, res)
 }
