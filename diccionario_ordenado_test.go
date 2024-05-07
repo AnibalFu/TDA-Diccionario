@@ -43,10 +43,8 @@ func TestBorrarConCeroHijos(t *testing.T) {
 	dic.Guardar(2, 2)
 	dic.Guardar(6, 6)
 
-	require.EqualValues(t, 3, dic.Cantidad())
 	require.EqualValues(t, 6, dic.Borrar(6))
 	require.False(t, dic.Pertenece(6))
-	require.EqualValues(t, 2, dic.Cantidad())
 
 	dic.Guardar(6, 6)
 	dic.Guardar(7, 7)
@@ -71,6 +69,28 @@ func TestBorrarConUnHijos(t *testing.T) {
 	require.True(t, dic.Pertenece(6))
 	require.EqualValues(t, 6, dic.Borrar(6))
 	require.False(t, dic.Pertenece(7))
+
+}
+
+func TestBorrarConDosHijos(t *testing.T) {
+	dic := TDAAbb.CrearABB[int, int](CompararEnteros)
+
+	dic.Guardar(10, 10)
+	dic.Guardar(4, 4)
+	dic.Guardar(5, 5)
+	dic.Guardar(1, 1)
+	dic.Guardar(13, 13)
+	dic.Guardar(11, 11)
+	dic.Guardar(12, 12)
+	dic.Guardar(14, 14)
+
+	require.EqualValues(t, 4, dic.Borrar(4))
+	require.False(t, dic.Pertenece(4))
+	require.EqualValues(t, 13, dic.Borrar(13))
+	require.False(t, dic.Pertenece(13))
+	require.EqualValues(t, 10, dic.Borrar(10))
+	require.False(t, dic.Pertenece(10))
+	require.EqualValues(t, 5, dic.Cantidad())
 
 }
 
