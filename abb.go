@@ -30,49 +30,59 @@ func CrearABB[K comparable, V any](funcion_cmp func(K, K) int) DiccionarioOrdena
 }
 
 func (ab *abb[K, V]) Pertenece(clave K) bool {
-	nodoAct, _ := buscarActYAnt(ab, ab.raiz, ab.raiz, clave)
-	return nodoAct != nil
+	nodo := buscarPunteroNodo(ab, &ab.raiz, clave)
+	return (*nodo) != nil
 }
 
 func (ab *abb[K, V]) Obtener(clave K) V {
-	nodoAct, _ := buscarActYAnt(ab, ab.raiz, ab.raiz, clave)
-	if nodoAct == nil {
+	nodo := buscarPunteroNodo(ab, &ab.raiz, clave)
+	if (*nodo) == nil {
 		panic("La clave no pertenece al diccionario")
 	}
 
-	return nodoAct.dato
+	return (*nodo).dato
 }
 
 func (ab *abb[K, V]) Guardar(clave K, valor V) {
-	nuevoNodo := crearNodoAbb(clave, valor)
-	_, nodoAnt := buscarActYAnt(ab, ab.raiz, ab.raiz, clave)
+	// Busco la referencia a la referencia donde deberia de ir la clave.
+	nodo := buscarPunteroNodo(ab, &ab.raiz, clave)
 
-	// Caso arbol sin nodos
-	if nodoAnt == nil {
-		ab.raiz = nuevoNodo
+	// Caso guardo elemento nuevo, si ya esta no deberia sumar 1 a cantidad
+	if *nodo == nil {
+		ab.cantidad++
+		*nodo = crearNodoAbb(clave, valor)
+
 	} else {
-		resCmp := ab.cmp(nodoAnt.clave, clave)
+		(*nodo).dato = valor
 
-		// Caso clave ya existe
-		if resCmp == 0 {
-			nodoAnt.dato = valor
-			return
-
-		} else if resCmp > 0 {
-			nodoAnt.izq = nuevoNodo
-
-		} else {
-			nodoAnt.der = nuevoNodo
-
-		}
 	}
-
-	ab.cantidad++
-
 }
 
 func (ab *abb[K, V]) Borrar(clave K) V {
-	return ab.raiz.dato
+	nodo := buscarPunteroNodo(ab, &ab.raiz, clave)
+
+	if *nodo == nil {
+		panic("La clave no pertenece al diccionario")
+	}
+
+	ab.cantidad--
+	dato := (*nodo).dato
+
+	// Veo en que caso de borrado estoy, 0 hijos, 1 hijo, 2 hijos.
+	// Caso 2 hijos, busco el reemplazo, reemplazo los datos y borro el reemplazo.
+	if (*nodo).izq != nil && (*nodo).der != nil {
+		reemplazo := buscarReemplazo(&(*nodo).izq)
+		(*nodo).clave, (*nodo).dato = (*reemplazo).clave, (*reemplazo).dato
+		_borrar(reemplazo)
+
+		// Caso 0 hijos o 1 hijo.
+	} else {
+		_borrar(nodo)
+
+	}
+
+	return dato
+
 }
 
 func (ab *abb[K, V]) Cantidad() int {
@@ -117,22 +127,25 @@ func crearNodoAbb[K comparable, V any](clave K, valor V) *nodoAbb[K, V] {
 	return &nodoAbb[K, V]{clave: clave, dato: valor}
 }
 
-// Busca el nodo actual y su anterior dado una clave pasada por parametro, devuelve el nodo actual y anterior
-func buscarActYAnt[K comparable, V any](ab *abb[K, V], nodoAct, nodoAnt *nodoAbb[K, V], clave K) (*nodoAbb[K, V], *nodoAbb[K, V]) {
-	if nodoAct == nil {
-		return nodoAct, nodoAnt
+// Busca la direccion y devuelve el puntero del puntero que le correnponderia a la clave pasada por parametro.
+func buscarPunteroNodo[K comparable, V any](ab *abb[K, V], nodo **nodoAbb[K, V], clave K) **nodoAbb[K, V] {
+	if *nodo == nil {
+		return nodo
 	}
 
-	resCmp := ab.cmp(nodoAct.clave, clave)
-
+	// Veo para que lado realizar la sig busqueda o si ya estoy en el correcto.
+	resCmp := ab.cmp((*nodo).clave, clave)
 	if resCmp == 0 {
-		return nodoAct, nodoAnt
+		return nodo
 
 	} else if resCmp > 0 {
-		return buscarActYAnt(ab, nodoAct.izq, nodoAct, clave)
+		// Llamo recursivamente pasando la direccion de memoria del nodo izq del nodo actual.
+		return buscarPunteroNodo(ab, &(*nodo).izq, clave)
 
 	} else {
-		return buscarActYAnt(ab, nodoAct.der, nodoAct, clave)
+		// Llamo recursivamente pasando la direccion de memoria del nodo der del nodo actual.
+		return buscarPunteroNodo(ab, &(*nodo).der, clave)
+
 	}
 }
 
@@ -162,4 +175,30 @@ func (ab *abb[K, V]) RecorrerPorNiveles() []K {
 	}
 
 	return res
+}
+
+// La funcion recibe un nodo con 0 hijos o 1 hijo y borra el nodo de forma correcta.
+func _borrar[K comparable, V any](nodo **nodoAbb[K, V]) {
+	hijoIzq, hijoDer := (*nodo).izq, (*nodo).der
+	if hijoIzq == nil && hijoDer != nil {
+		*nodo = hijoIzq
+
+	} else if hijoDer == nil && hijoIzq != nil {
+		*nodo = hijoIzq
+
+	} else {
+		*nodo = nil
+
+	}
+}
+
+// Dado un nodo que tiene 2 hijos y lo quiero borrar, busco el reeemplazo correcto,
+// devolviendo el puntero del puntero del nodo que corresponde.
+func buscarReemplazo[K comparable, V any](nodo **nodoAbb[K, V]) **nodoAbb[K, V] {
+	if (*nodo).der == nil {
+		return nodo
+	}
+
+	return buscarReemplazo(&(*nodo).der)
+
 }
