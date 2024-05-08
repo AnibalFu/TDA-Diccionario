@@ -98,7 +98,7 @@ func TestBorrarConUnHijos(t *testing.T) {
 	dic.Guardar(7, 7)
 	require.True(t, dic.Pertenece(6))
 	require.EqualValues(t, 6, dic.Borrar(6))
-	require.False(t, dic.Pertenece(7))
+	require.False(t, dic.Pertenece(6))
 
 }
 
