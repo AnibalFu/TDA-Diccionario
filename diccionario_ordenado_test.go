@@ -27,13 +27,43 @@ func CompararEnteros(a, b int) int {
 	}
 }
 
-func TestDiccionarioAbbVacio(t *testing.T) {
+func TestDiccionarioAbbVacio1(t *testing.T) {
 	t.Log("Comprueba que Diccionario vacio no tiene claves")
 	dic := TDAAbb.CrearAbb[string, string](CompararStrings)
 	require.EqualValues(t, 0, dic.Cantidad())
 	require.False(t, dic.Pertenece("A"))
 	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dic.Obtener("A") })
 	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dic.Borrar("A") })
+}
+
+func TestDiccionarioAbbVacio2(t *testing.T) {
+	t.Log("Comprueba que Diccionario vacio no tiene claves luego de borrar todas las claves")
+	dic := TDAAbb.CrearAbb[int, int](CompararEnteros)
+	dic.Guardar(20, 20)
+	dic.Guardar(10, 10)
+	dic.Guardar(30, 30)
+	dic.Guardar(22, 22)
+	dic.Guardar(15, 15)
+	dic.Guardar(3, 3)
+	dic.Guardar(4, 4)
+	dic.Guardar(53, 53)
+	dic.Guardar(21, 21)
+	require.EqualValues(t, 9, dic.Cantidad())
+
+	dic.Borrar(4)
+	dic.Borrar(21)
+	dic.Borrar(10)
+	dic.Borrar(30)
+	dic.Borrar(20)
+	dic.Borrar(15)
+	dic.Borrar(22)
+	dic.Borrar(3)
+	dic.Borrar(53)
+	require.EqualValues(t, 0, dic.Cantidad())
+	require.False(t, dic.Pertenece(15))
+	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dic.Obtener(22) })
+	require.PanicsWithValue(t, "La clave no pertenece al diccionario", func() { dic.Borrar(4) })
+
 }
 
 func TestBorrarConCeroHijos(t *testing.T) {
