@@ -1,7 +1,7 @@
 package diccionario
 
 import (
-	cola "tdas/cola"
+	TDAPila "tdas/pila"
 )
 
 type funcCmp[K comparable] func(K, K) int
@@ -20,12 +20,13 @@ type abb[K comparable, V any] struct {
 }
 
 type iteradorRangoAbb[K comparable, V any] struct {
-	iterAbb *abb[K, V]
-	desde   *K
-	hasta   *K
+	iterAbb  *abb[K, V]
+	iterPila TDAPila.Pila[nodoAbb[K, V]]
+	desde    *K
+	hasta    *K
 }
 
-func CrearAbb[K comparable, V any](funcion_cmp func(K, K) int) DiccionarioOrdenado[K, V] {
+func CrearABB[K comparable, V any](funcion_cmp func(K, K) int) DiccionarioOrdenado[K, V] {
 	return &abb[K, V]{cmp: funcion_cmp}
 }
 
@@ -90,30 +91,41 @@ func (ab *abb[K, V]) Cantidad() int {
 }
 
 func (ab *abb[K, V]) Iterar(visitar func(clave K, valor V) bool) {
-	_iterar(ab, ab.raiz, nil, nil, visitar)
+	continuar := true
+	_iterar(ab, ab.raiz, nil, nil, visitar, &continuar)
 }
 
 func (ab *abb[K, V]) IterarRango(desde *K, hasta *K, visitar func(clave K, dato V) bool) {
-	_iterar(ab, ab.raiz, desde, hasta, visitar)
+	continuar := true
+	_iterar(ab, ab.raiz, desde, hasta, visitar, &continuar)
 }
-
 func (ab *abb[K, V]) Iterador() IterDiccionario[K, V] {
-	return &iteradorExterno[K, V]{}
+	return ab.IteradorRango(nil, nil)
 }
 
 func (ab *abb[K, V]) IteradorRango(desde *K, hasta *K) IterDiccionario[K, V] {
-	return &iteradorExterno[K, V]{}
+	return &iteradorRangoAbb[K, V]{iterAbb: ab, desde: desde, hasta: hasta, iterPila: ab.crearIterador(desde, hasta)}
 }
 
 func (iterador *iteradorRangoAbb[K, V]) HaySiguiente() bool {
-	return true
+	return !iterador.iterPila.EstaVacia()
 }
 
 func (iterador *iteradorRangoAbb[K, V]) VerActual() (K, V) {
-	return iterador.iterAbb.raiz.clave, iterador.iterAbb.raiz.dato
+	if !iterador.HaySiguiente() {
+		panic("El iterador termino de iterar")
+	}
+
+	return iterador.iterPila.VerTope().clave, iterador.iterPila.VerTope().dato
 }
 
 func (iterador *iteradorRangoAbb[K, V]) Siguiente() {
+	if !iterador.HaySiguiente() {
+		panic("El iterador termino de iterar")
+	}
+
+	nodo := iterador.iterPila.Desapilar()
+	iterApilar(iterador.iterAbb, iterador.iterPila, nodo.der, iterador.desde, iterador.hasta)
 
 }
 
@@ -149,42 +161,14 @@ func buscarPunteroNodo[K comparable, V any](ab *abb[K, V], nodo **nodoAbb[K, V],
 	}
 }
 
-// //////////////////////////////////////////////
-func (ab *abb[K, V]) RecorrerPorNiveles() []K {
-	res := []K{}
-	if ab.raiz == nil {
-		return res
-	}
-
-	c := cola.CrearColaEnlazada[*nodoAbb[K, V]]()
-	c.Encolar(ab.raiz)
-
-	for !c.EstaVacia() {
-		nodo := c.Desencolar() // Desencolamos el nodo actual
-
-		// Ejecutamos la función visitar en el nodo actual
-		res = append(res, nodo.clave)
-
-		// Encolamos los hijos izquierdo y derecho del nodo actual si existen
-		if nodo.izq != nil {
-			c.Encolar(nodo.izq)
-		}
-		if nodo.der != nil {
-			c.Encolar(nodo.der)
-		}
-	}
-
-	return res
-}
-
 // La funcion recibe un nodo con 0 hijos o 1 hijo y borra el nodo de forma correcta.
 func _borrar[K comparable, V any](nodo **nodoAbb[K, V]) {
 	hijoIzq, hijoDer := (*nodo).izq, (*nodo).der
 
-	if hijoIzq == nil && hijoDer != nil {
+	if hijoDer != nil {
 		*nodo = hijoDer
 
-	} else if hijoDer == nil && hijoIzq != nil {
+	} else if hijoIzq != nil {
 		*nodo = hijoIzq
 
 	} else {
@@ -204,25 +188,53 @@ func buscarReemplazo[K comparable, V any](nodo **nodoAbb[K, V]) **nodoAbb[K, V] 
 
 }
 
-func _iterar[K comparable, V any](abb *abb[K, V], nodo *nodoAbb[K, V], desde *K, hasta *K, visitar func(clave K, dato V) bool) {
-	if nodo == nil {
+// Iterar de forma inorder dado un rango.
+func _iterar[K comparable, V any](abb *abb[K, V], nodo *nodoAbb[K, V], desde *K, hasta *K, visitar func(clave K, dato V) bool, continuar *bool) {
+	if nodo == nil || !*continuar {
 		return
 	}
 
 	// Si desde es nil, iterar desde la primera clave.
 	if desde == nil || abb.cmp(nodo.clave, *desde) >= 0 {
-		_iterar(abb, nodo.izq, desde, hasta, visitar)
+		_iterar(abb, nodo.izq, desde, hasta, visitar, continuar)
 	}
 
-	// Si estamos en el rango se debe visitar el nodo actual.
-	if (desde == nil || abb.cmp(nodo.clave, *desde) >= 0) && (hasta == nil || abb.cmp(nodo.clave, *hasta) <= 0) {
-		if !visitar(nodo.clave, nodo.dato) {
-			return
-		}
+	// Si estamos en el rango se debe visitar el nodo actual pero si continual es false no debo visitar.
+	if *continuar && (desde == nil || abb.cmp(nodo.clave, *desde) >= 0) && (hasta == nil || abb.cmp(nodo.clave, *hasta) <= 0) {
+		// Visitar el nodo y actualizar continuar si es necesario.
+		*continuar = visitar(nodo.clave, nodo.dato)
 	}
 
-	// Si hasta es nil, iterar hasta la última clave.
+	// Si hasta es nil, iterar hasta la ultima clave.
 	if hasta == nil || abb.cmp(nodo.clave, *hasta) <= 0 {
-		_iterar(abb, nodo.der, desde, hasta, visitar)
+		_iterar(abb, nodo.der, desde, hasta, visitar, continuar)
+	}
+}
+
+func (ab *abb[K, V]) crearIterador(desde, hasta *K) TDAPila.Pila[nodoAbb[K, V]] {
+	pila := TDAPila.CrearPilaDinamica[nodoAbb[K, V]]()
+	iterApilar(ab, pila, ab.raiz, desde, hasta)
+	return pila
+}
+
+// La funcion
+func iterApilar[K comparable, V any](abb *abb[K, V], pila TDAPila.Pila[nodoAbb[K, V]], nodo *nodoAbb[K, V], desde, hasta *K) {
+	if nodo == nil {
+		return
+	}
+
+	// Si estamos en el rango se debe apilar el nodo actual e ir a la izquierda.
+	if (desde == nil || (abb.cmp(nodo.clave, *desde) >= 0)) && (hasta == nil || abb.cmp(nodo.clave, *hasta) <= 0) {
+		pila.Apilar(*nodo)
+		iterApilar(abb, pila, nodo.izq, desde, hasta)
+
+		// Ir a la derecha si la clave del actual es mayor al desde.
+	} else if desde != nil && abb.cmp(nodo.clave, *desde) < 0 {
+		iterApilar(abb, pila, nodo.der, desde, hasta)
+
+		// Ir a la izquierda si la clave del actual es mejor al hasta.
+	} else if hasta != nil && abb.cmp(nodo.clave, *hasta) > 0 {
+		iterApilar(abb, pila, nodo.izq, desde, hasta)
+
 	}
 }
