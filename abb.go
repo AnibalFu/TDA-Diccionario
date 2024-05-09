@@ -70,6 +70,7 @@ func (ab *abb[K, V]) Borrar(clave K) V {
 	dato := (*nodo).dato
 
 	// Veo en que caso de borrado estoy, 0 hijos, 1 hijo, 2 hijos.
+
 	// Caso 2 hijos, busco el reemplazo, reemplazo los datos y borro el reemplazo.
 	if (*nodo).izq != nil && (*nodo).der != nil {
 		reemplazo := buscarReemplazo(&(*nodo).izq)
@@ -188,7 +189,8 @@ func buscarReemplazo[K comparable, V any](nodo **nodoAbb[K, V]) **nodoAbb[K, V] 
 
 }
 
-// Iterar de forma inorder dado un rango.
+// Iterar de forma inorder dado un rango, si algino de los campos o los 2 son nil entonces no se considera
+// que tiene cota inferior, superior, o ambos.
 func _iterar[K comparable, V any](abb *abb[K, V], nodo *nodoAbb[K, V], desde *K, hasta *K, visitar func(clave K, dato V) bool, continuar *bool) {
 	if nodo == nil || !*continuar {
 		return
@@ -211,13 +213,17 @@ func _iterar[K comparable, V any](abb *abb[K, V], nodo *nodoAbb[K, V], desde *K,
 	}
 }
 
+// Crea el inicio de la pila del iterador externo dado un rango.
 func (ab *abb[K, V]) crearIterador(desde, hasta *K) TDAPila.Pila[nodoAbb[K, V]] {
 	pila := TDAPila.CrearPilaDinamica[nodoAbb[K, V]]()
 	iterApilar(ab, pila, ab.raiz, desde, hasta)
 	return pila
 }
 
-// La funcion
+// La funcion apila todos los elementos izquierdos del nodo tales que se encuentren en el rango establecido,
+// si es nil los dos o alguno de los 2 campos se considera que no tiene rango o cota en relacion a ese parametro
+// luego apila todo a derecha si el actual esta por fuera del rango inferior o izquierda si se encuentra por
+// fuera del rango superior.
 func iterApilar[K comparable, V any](abb *abb[K, V], pila TDAPila.Pila[nodoAbb[K, V]], nodo *nodoAbb[K, V], desde, hasta *K) {
 	if nodo == nil {
 		return
