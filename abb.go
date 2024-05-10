@@ -32,7 +32,7 @@ func CrearABB[K comparable, V any](funcion_cmp func(K, K) int) DiccionarioOrdena
 
 func (ab *abb[K, V]) Pertenece(clave K) bool {
 	nodo := buscarPunteroNodo(ab, &ab.raiz, clave)
-	return (*nodo) != nil
+	return *nodo != nil
 }
 
 func (ab *abb[K, V]) Obtener(clave K) V {
@@ -61,7 +61,6 @@ func (ab *abb[K, V]) Guardar(clave K, valor V) {
 
 func (ab *abb[K, V]) Borrar(clave K) V {
 	nodo := buscarPunteroNodo(ab, &ab.raiz, clave)
-
 	if *nodo == nil {
 		panic("La clave no pertenece al diccionario")
 	}
@@ -80,7 +79,6 @@ func (ab *abb[K, V]) Borrar(clave K) V {
 		// Caso 0 hijos o 1 hijo.
 	} else {
 		_borrar(nodo)
-
 	}
 
 	return dato
